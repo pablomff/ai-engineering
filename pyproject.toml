@@ -3,3 +3,15 @@ name = "ai-engineering"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1.post1",
+]
+
+[tool.pytest.ini_options]
+# Con "auto", pytest-asyncio trata cada `async def test_...` como test asíncrono
+# sin tener que decorarlo con @pytest.mark.asyncio.
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
