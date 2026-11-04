@@ -2,7 +2,12 @@
 name = "ai-engineering"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "anthropic>=2.4.0",
+    "openai>=3.44.0",
+    "pydantic>=2.14.2",
+    "python-dotenv>=1.2.4",
+]
 
 [dependency-groups]
 dev = [
@@ -15,3 +20,7 @@ dev = [
 # sin tener que decorarlo con @pytest.mark.asyncio.
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+# Agrega la raíz al sys.path para que los tests importen llm_client sin
+# instalar el proyecto como paquete.
+pythonpath = ["."]
