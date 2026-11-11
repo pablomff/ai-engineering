@@ -54,8 +54,13 @@ class Settings(BaseModel):
     max_retries: int = Field(default=2, ge=0, le=10)
 
     @classmethod
-    def from_env(cls) -> Self:
+    def from_env(cls, provider: Provider | None = None) -> Self:
         """Construye la configuración a partir de ``os.environ``.
+
+        Si se pasa ``provider``, reemplaza a ``LLM_PROVIDER``. Sirve para
+        código que funciona con un único proveedor (como el pipeline de
+        extracción, que solo usa Anthropic) y no debe depender de qué
+        proveedor esté elegido en el entorno.
 
         Las variables ausentes o vacías se omiten para que apliquen los
         valores por defecto del modelo. Así, una línea como ``OPENAI_API_KEY=``
@@ -67,6 +72,8 @@ class Settings(BaseModel):
             valor = os.environ.get(variable, "").strip()
             if valor:
                 valores[campo] = valor
+        if provider is not None:
+            valores["provider"] = provider
         return cls.model_validate(valores)
 
     @model_validator(mode="after")

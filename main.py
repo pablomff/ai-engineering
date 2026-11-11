@@ -1,4 +1,4 @@
-"""Script de validación de la Pre-Entrega 1.
+"""Script de validación del cliente LLM unificado.
 
 Prueba el cliente LLM unificado contra el proveedor configurado, en dos modos:
 

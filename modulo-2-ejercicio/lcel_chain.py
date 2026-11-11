@@ -1,6 +1,6 @@
-"""Ejercicio Módulo 2: refactorización a LCEL asíncrono.
+"""Cadena LCEL asíncrona que responde una pregunta en texto plano.
 
-Reemplaza la llamada imperativa al SDK del Módulo 1 por una cadena declarativa
+Reemplaza la llamada imperativa al SDK de ``llm_client`` por una cadena declarativa
 de LangChain: ``ChatPromptTemplate | ChatAnthropic | StrOutputParser``.
 
 Por qué LCEL: cada pieza es un ``Runnable`` intercambiable y el operador ``|``
@@ -47,7 +47,7 @@ def crear_cadena() -> Runnable[dict[str, str], str]:
     # envía si LLM_TEMPERATURE está definida; con None el parámetro se omite.
     temperatura = os.environ.get("LLM_TEMPERATURE")
 
-    # Reintentos y timeout nativos del SDK, como en el Módulo 1.
+    # Reintentos y timeout nativos del SDK, como en llm_client.
     modelo = ChatAnthropic(
         model_name=os.environ.get("ANTHROPIC_MODEL") or "claude-opus-5-5",
         temperature=float(temperatura) if temperatura else None,

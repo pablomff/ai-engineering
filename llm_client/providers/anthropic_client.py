@@ -43,6 +43,9 @@ logger = logging.getLogger(__name__)
 _DEFAULT_TEMPERATURE: float = ModelConfig().temperature
 
 
+_PROVIDER = "anthropic"
+
+
 class AnthropicClient(BaseLLMClient):
     """Implementación de ``BaseLLMClient`` para Anthropic.
 
@@ -71,7 +74,7 @@ class AnthropicClient(BaseLLMClient):
     @property
     def provider_name(self) -> str:
         """Nombre del proveedor: ``"anthropic"``."""
-        return "anthropic"
+        return _PROVIDER
 
     @property
     def default_model(self) -> str:
@@ -196,44 +199,60 @@ class AnthropicClient(BaseLLMClient):
     def _map_error(self, exc: anthropic.AnthropicError) -> LLMError:
         """Traduce una excepción del SDK de Anthropic a nuestra jerarquía.
 
-        El orden importa: ``APITimeoutError`` es subclase de
-        ``APIConnectionError``, y las específicas por status (auth, rate
-        limit, bad request, overloaded) son subclases de ``APIStatusError``,
-        así que van antes que la genérica.
-
-        Los mensajes son propios y no copian el del SDK, para no filtrar datos
-        sensibles.
+        Delega en ``map_anthropic_error``, que también usa el chat model de
+        LangChain (``providers.langchain_anthropic``).
         """
-        provider = self.provider_name
-        if isinstance(exc, (anthropic.AuthenticationError, anthropic.PermissionDeniedError)):
-            return LLMAuthError(
-                f"Anthropic rechazó las credenciales (HTTP {exc.status_code})", provider=provider
-            )
-        if isinstance(exc, anthropic.RateLimitError):
-            return LLMRateLimitError(
-                "Anthropic: límite de requests o tokens superado", provider=provider
-            )
-        if isinstance(exc, anthropic.APITimeoutError):
-            return LLMTimeoutError(
-                f"Anthropic no respondió en {self.settings.timeout_seconds}s", provider=provider
-            )
-        if isinstance(exc, anthropic.APIConnectionError):
-            return LLMConnectionError("No se pudo conectar con Anthropic", provider=provider)
-        if isinstance(exc, anthropic.OverloadedError):
-            # 529 (overloaded_error) es propio de Anthropic: el servicio está
-            # sobrecargado. Se resuelve esperando, por eso es reintentable.
-            return LLMProviderUnavailableError(
-                "Anthropic está sobrecargado (HTTP 529)", provider=provider
-            )
-        if isinstance(exc, anthropic.APIStatusError):
-            if exc.status_code >= 500:
-                return LLMProviderUnavailableError(
-                    f"Anthropic no está disponible (HTTP {exc.status_code})", provider=provider
-                )
-            if exc.status_code >= 400:
-                return LLMBadRequestError(
-                    f"Anthropic rechazó el request (HTTP {exc.status_code})", provider=provider
-                )
-        return LLMUnknownError(
-            f"Error inesperado de Anthropic ({type(exc).__name__})", provider=provider
+        return map_anthropic_error(exc, timeout_seconds=self.settings.timeout_seconds)
+
+
+def map_anthropic_error(
+    exc: anthropic.AnthropicError, *, timeout_seconds: float | None = None
+) -> LLMError:
+    """Traduce una excepción del SDK de Anthropic a nuestra jerarquía.
+
+    El orden importa: ``APITimeoutError`` es subclase de
+    ``APIConnectionError``, y las específicas por status (auth, rate
+    limit, bad request, overloaded) son subclases de ``APIStatusError``,
+    así que van antes que la genérica.
+
+    Los mensajes son propios y no copian el del SDK, para no filtrar datos
+    sensibles.
+
+    Es una función de módulo, y no solo un método de ``AnthropicClient``,
+    para que la reutilice el chat model de LangChain
+    (``providers.langchain_anthropic``).
+    """
+    provider = _PROVIDER
+    if isinstance(exc, (anthropic.AuthenticationError, anthropic.PermissionDeniedError)):
+        return LLMAuthError(
+            f"Anthropic rechazó las credenciales (HTTP {exc.status_code})", provider=provider
         )
+    if isinstance(exc, anthropic.RateLimitError):
+        return LLMRateLimitError(
+            "Anthropic: límite de requests o tokens superado", provider=provider
+        )
+    if isinstance(exc, anthropic.APITimeoutError):
+        # Quien solo tiene la excepción (sin la configuración) no conoce el
+        # timeout; en ese caso el mensaje no lo menciona.
+        espera = f"en {timeout_seconds}s" if timeout_seconds is not None else "a tiempo"
+        return LLMTimeoutError(f"Anthropic no respondió {espera}", provider=provider)
+    if isinstance(exc, anthropic.APIConnectionError):
+        return LLMConnectionError("No se pudo conectar con Anthropic", provider=provider)
+    if isinstance(exc, anthropic.OverloadedError):
+        # 529 (overloaded_error) es propio de Anthropic: el servicio está
+        # sobrecargado. Se resuelve esperando, por eso es reintentable.
+        return LLMProviderUnavailableError(
+            "Anthropic está sobrecargado (HTTP 529)", provider=provider
+        )
+    if isinstance(exc, anthropic.APIStatusError):
+        if exc.status_code >= 500:
+            return LLMProviderUnavailableError(
+                f"Anthropic no está disponible (HTTP {exc.status_code})", provider=provider
+            )
+        if exc.status_code >= 400:
+            return LLMBadRequestError(
+                f"Anthropic rechazó el request (HTTP {exc.status_code})", provider=provider
+            )
+    return LLMUnknownError(
+        f"Error inesperado de Anthropic ({type(exc).__name__})", provider=provider
+    )
