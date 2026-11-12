@@ -108,3 +108,14 @@ def test_retryable_coherente_con_el_tipo(anthropic_client: AnthropicClient) -> N
     auth = anthropic.AuthenticationError("x", response=response(401), body=None)
     assert anthropic_client._map_error(sobrecarga).retryable is True
     assert anthropic_client._map_error(auth).retryable is False
+
+
+def test_traducir_error_anthropic_de_langchain() -> None:
+    """El chat model de LangChain usa la misma traducción que AnthropicClient."""
+    from llm_client.providers.langchain_anthropic import traducir_error_anthropic
+
+    timeout = traducir_error_anthropic(anthropic.APITimeoutError(request=REQUEST))
+    assert type(timeout) is LLMTimeoutError
+    assert timeout.message == "Anthropic no respondió a tiempo"
+    # Lo que no viene del SDK no se traduce: es un bug y debe propagarse.
+    assert traducir_error_anthropic(RuntimeError("bug")) is None
