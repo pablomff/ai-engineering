@@ -99,6 +99,14 @@ Para usar el Python 3.11 que ya tengas instalado en lugar de 3.12:
 uv sync --python 3.11
 ```
 
+Sin uv, con `pip` en un entorno virtual (pip 25.1 o superior, que lee los grupos de dependencias):
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -e . --group dev   # el proyecto, sus dependencias y las de los tests
+pytest
+```
+
 ## Variables de entorno
 
 | Variable | Obligatoria | Valor por defecto | Para qué sirve |

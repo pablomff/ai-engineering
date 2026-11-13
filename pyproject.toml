@@ -11,6 +11,16 @@ dependencies = [
     "python-dotenv>=1.2.4",
 ]
 
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+# El repo tiene varios paquetes en la raíz (flat-layout), así que setuptools no
+# puede adivinar cuáles instalar: se declaran explícitamente. Quedan afuera
+# tests/, modulo-2-ejercicio/ y main.py, que no son parte de la librería.
+[tool.setuptools.packages.find]
+include = ["llm_client*", "pipelines*"]
+
 [dependency-groups]
 dev = [
     "pytest>=9.2.0",
@@ -23,6 +33,6 @@ dev = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-# Agrega la raíz al sys.path para que los tests importen llm_client sin
-# instalar el proyecto como paquete.
+# Agrega la raíz al sys.path para que los tests importen llm_client y
+# pipelines aunque el proyecto no esté instalado como paquete.
 pythonpath = ["."]
