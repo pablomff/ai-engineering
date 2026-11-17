@@ -40,6 +40,9 @@ Este proyecto ofrece una única API asíncrona, `AsyncLLMManager`, que:
 │       ├── schemas.py               # Modelo Pydantic ExtraccionTecnica (contrato de salida)
 │       ├── chain.py                 # Cadena LCEL, reintentos y process_text()
 │       └── demo.py                  # Mini-script de prueba asíncrono
+├── modulo-1-ejercicio/              # Independiente: solo librería estándar
+│   ├── orquestador.py               # Ejercicio del Módulo 1: gather, timeout y Semaphore
+│   └── test_orquestador.py          # Tests: uv run pytest modulo-1-ejercicio
 ├── modulo-2-ejercicio/
 │   └── lcel_chain.py                # Ejercicio del Módulo 2: prompt | modelo | StrOutputParser
 └── tests/
