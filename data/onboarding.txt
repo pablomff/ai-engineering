@@ -1,0 +1,45 @@
+GUÍA DE ONBOARDING PARA EL EQUIPO DE INGENIERÍA
+
+Bienvenida o bienvenido a Lumen Pagos. Esta guía resume lo que vas a hacer en tus primeras semanas en el equipo de ingeniería y a quién recurrir en cada caso.
+
+PRIMER DÍA
+
+El primer día recibís la notebook ya configurada, con el sistema operativo actualizado y el disco cifrado. Tu buddy, una persona del equipo asignada para acompañarte durante el primer mes, te va a contactar por Slack antes de las 10:00 para presentarse y coordinar una primera charla.
+
+Ese mismo día tenés que activar tres accesos:
+
+1. La VPN corporativa, que es obligatoria para acceder a cualquier sistema interno, incluido staging.
+2. Tu usuario en la organización de GitHub de la empresa, con la verificación en dos pasos activada. Sin la verificación en dos pasos, la cuenta se bloquea a las 48 horas.
+3. Tu usuario en Vault, donde se guardan todas las credenciales. Nunca se comparten credenciales por Slack ni por mail: si alguien te pide una, indicale el secreto correspondiente en Vault.
+
+PRIMERA SEMANA
+
+Durante la primera semana el objetivo es entender la plataforma, no producir código. La agenda incluye:
+
+- Una sesión de arquitectura de dos horas con alguien del equipo de plataforma, donde se recorre cómo fluye un pago de punta a punta.
+- La lectura del documento de arquitectura, del runbook de incidentes y de la política de despliegues.
+- Levantar el entorno local con el comando "lumen dev up", que descarga las imágenes de todos los servicios y carga datos de prueba. La primera vez tarda unos 20 minutos.
+- Acompañar como observador una sesión de guardia, para ver cómo se reciben y clasifican las alertas.
+
+SEGUNDA SEMANA
+
+En la segunda semana tomás tu primer ticket, elegido por tu buddy para que sea chico y toque un solo servicio. El objetivo es recorrer el ciclo completo: crear la rama, abrir el pull request, conseguir las dos aprobaciones y hacer tu primer despliegue a producción acompañado por tu buddy, respetando la ventana de despliegue.
+
+GUARDIAS
+
+No hacés guardias durante los primeros 3 meses. Pasado ese tiempo, primero hacés dos semanas como guardia secundaria junto a una persona con experiencia, y recién después entrás en la rotación de guardia primaria.
+
+HERRAMIENTAS
+
+- Slack para la comunicación diaria. Los canales principales son #ingenieria (anuncios), #plataforma-ayuda (preguntas técnicas) y #deploys (avisos automáticos de cada despliegue).
+- Jira para los tickets y la planificación semanal, que se hace los lunes a las 11:00.
+- Confluence para la documentación de cada equipo.
+- Datadog para logs, métricas y paneles.
+
+A QUIÉN RECURRIR
+
+- Dudas técnicas del día a día: tu buddy o el canal #plataforma-ayuda.
+- Problemas con la notebook, la VPN o los accesos: la mesa de ayuda de IT, escribiendo a ayuda-it@lumenpagos.example.
+- Temas de licencias, vacaciones o recibos de sueldo: el equipo de Personas.
+
+Al cumplir el primer mes tenés una reunión con tu líder para repasar cómo te sentiste, qué te faltó y cuáles van a ser tus objetivos para los próximos tres meses.
