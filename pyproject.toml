@@ -17,7 +17,7 @@ build-backend = "setuptools.build_meta"
 
 # El repo tiene varios paquetes en la raíz (flat-layout), así que setuptools no
 # puede adivinar cuáles instalar: se declaran explícitamente. Quedan afuera
-# tests/, modulo-2-ejercicio/ y main.py, que no son parte de la librería.
+# tests/, modulo-1-ejercicio/, modulo-2-ejercicio/ y main.py, que no son parte de la librería.
 [tool.setuptools.packages.find]
 include = ["llm_client*", "pipelines*"]
 
