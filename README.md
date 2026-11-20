@@ -35,21 +35,30 @@ Este proyecto ofrece una única API asíncrona, `AsyncLLMManager`, que:
 │       ├── openai_client.py         # Implementación para OpenAI (AsyncOpenAI)
 │       ├── anthropic_client.py      # Implementación para Anthropic (AsyncAnthropic)
 │       └── langchain_anthropic.py   # ChatAnthropic de LangChain para la Pre-entrega 2
+├── data/                            # Dataset de ejemplo del RAG (.md y .txt de una empresa ficticia)
 ├── pipelines/                       # Pipelines LCEL, uno por subpaquete
-│   └── extraccion/                  # Pre-entrega 2: extracción de entidades técnicas validada
-│       ├── schemas.py               # Modelo Pydantic ExtraccionTecnica (contrato de salida)
-│       ├── chain.py                 # Cadena LCEL, reintentos y process_text()
-│       └── demo.py                  # Mini-script de prueba asíncrono
-├── modulo-1-ejercicio/              # Independiente: solo librería estándar
-│   ├── orquestador.py               # Ejercicio del Módulo 1: gather, timeout y Semaphore
-│   └── test_orquestador.py          # Tests: uv run pytest modulo-1-ejercicio
+│   ├── extraccion/                  # Pre-entrega 2: extracción de entidades técnicas validada
+│   │   ├── schemas.py               # Modelo Pydantic ExtraccionTecnica (contrato de salida)
+│   │   ├── chain.py                 # Cadena LCEL, reintentos y process_text()
+│   │   └── demo.py                  # Mini-script de prueba asíncrono
+│   ├── rag/                         # Pre-entrega 3: RAG local con ChromaDB
+│   │   ├── vectorstore.py           # Modelo de embeddings y base ChromaDB (compartidos)
+│   │   ├── ingesta.py               # Script de carga: lectura, chunking y persistencia
+│   │   ├── schemas.py               # RespuestaRAG: texto + referencias
+│   │   ├── chain.py                 # Retriever, cadena LCEL y get_rag_response()
+│   │   ├── exceptions.py            # Errores propios del pipeline
+│   │   └── demo.py                  # Pregunta con respuesta + pregunta trampa
+│   └── modulo-1-ejercicio/          # Independiente: solo librería estándar
+│       ├── orquestador.py          # Ejercicio del Módulo 1: gather, timeout y Semaphore
+│       └── test_orquestador.py      # Tests: uv run pytest modulo-1-ejercicio
 ├── modulo-2-ejercicio/
 │   └── lcel_chain.py                # Ejercicio del Módulo 2: prompt | modelo | StrOutputParser
 └── tests/
     ├── test_schemas.py              # Validaciones de los schemas
     ├── test_manager.py              # Contrato de errores del manager, con un cliente falso
     ├── test_error_mapping.py        # Traducción de excepciones de los SDKs a LLMError
-    └── test_extraccion.py           # Esquema, validación de la salida y cadena del pipeline de extracción
+    ├── test_extraccion.py           # Esquema, validación de la salida y cadena del pipeline de extracción
+    └── test_rag.py                  # Ingesta, base vectorial, contrato y cadena del RAG
 ```
 
 ## Decisiones de diseño
@@ -298,3 +307,128 @@ Cualquier otra excepción es un bug y se propaga sin envolver.
 **Una sola cadena por proceso.** Si no se le pasa una cadena, `process_text` usa una que crea la primera vez y reutiliza después, así todas las llamadas comparten el cliente HTTP y su pool de conexiones.
 
 **Logs sin datos sensibles.** Se loguean el largo del texto, la cantidad de tecnologías, la criticidad, el `stop_reason` y los nombres de los campos que fallaron, pero nunca el texto ni los valores recibidos.
+
+## Pre-entrega 3: sistema RAG local
+
+El código está en `pipelines/rag/` y el dataset de ejemplo en `data/`.
+
+Responde preguntas usando **solo** los documentos de `data/`: busca los fragmentos más parecidos a la pregunta en una base ChromaDB local y le pide al LLM una respuesta basada en ellos, con las referencias a los fragmentos usados. Si los documentos no tienen la respuesta, responde "No lo sé.".
+
+El dataset son cuatro documentos internos de **Lumen Pagos, una empresa ficticia**: arquitectura, runbook de incidentes, política de despliegues y onboarding. Que sea ficticia es a propósito: el modelo no puede responder con lo que ya sabe, así que cualquier dato que no esté en los documentos sería una alucinación.
+
+### Cómo correr
+
+```bash
+uv sync                                   # instala las dependencias (incluye torch para los embeddings)
+cp .env.example .env                      # completar ANTHROPIC_API_KEY
+
+uv run python -m pipelines.rag.ingesta    # 1. arma la base en ./vectorstore (una sola vez)
+uv run python -m pipelines.rag.demo       # 2. pregunta con respuesta + pregunta trampa
+
+# Una pregunta propia
+uv run python -m pipelines.rag.demo "¿Cuándo cambia la rotación de guardias?"
+
+# Volver a indexar (si cambian los documentos o el modelo de embeddings)
+uv run python -m pipelines.rag.ingesta --reindexar
+
+# Tests (no usan la red ni descargan modelos)
+uv run pytest tests/test_rag.py -v
+```
+
+La primera ejecución descarga el modelo de embeddings (unos 470 MB) en la caché de HuggingFace. La ingesta no necesita ninguna API key; la consulta necesita `ANTHROPIC_API_KEY`.
+
+Si la base ya existe, la ingesta no vuelve a indexar:
+
+```
+INFO La base ya tiene 8 fragmentos de 4 archivos: no se reindexa (usá --reindexar)
+```
+
+### Uso
+
+```python
+from pipelines.rag.chain import get_rag_response
+
+respuesta = await get_rag_response("¿Puedo desplegar un hotfix un viernes?")
+print(respuesta.respuesta)
+print(respuesta.referencias)   # [Referencia(archivo='politica-despliegues.md', fragmento=1), ...]
+print(respuesta.encontrada)    # False si la respuesta es "No lo sé."
+```
+
+### Las dos pruebas
+
+`demo.py` corre las dos preguntas en paralelo y verifica cada resultado. Salida real:
+
+```
+=== 1. Pregunta con respuesta en los documentos ===
+Pregunta: ¿Qué condiciones obligan a hacer rollback durante un despliegue canary?
+{
+  "respuesta": "Hay que hacer rollback inmediato, sin esperar a investigar la causa, si en cualquier etapa se cumple alguna de estas condiciones durante más de 5 minutos: la tasa de errores de la versión nueva supera el 1%, la latencia p99 supera los 800 milisegundos, o la tasa de aprobación de pagos cae más de 2 puntos respecto de la versión anterior. [...]",
+  "referencias": [{"archivo": "politica-despliegues.md", "fragmento": 2}],
+  "encontrada": true
+}
+
+=== 2. Pregunta trampa ===
+Pregunta: ¿Qué versión de Kubernetes usa el cluster de producción?
+{
+  "respuesta": "No lo sé.",
+  "referencias": [],
+  "encontrada": false
+}
+
+=== Verificación ===
+PASA: responde con referencias a politica-despliegues.md
+PASA: ante la pregunta trampa responde 'No lo sé.'
+```
+
+La pregunta trampa es difícil a propósito: `arquitectura.md` dice que los servicios corren en Kubernetes, así que el fragmento recuperado habla del tema, pero en ningún lugar dice qué versión. Un modelo que alucina inventaría una ("1.29"); este responde "No lo sé.".
+
+### Componentes
+
+| Componente | Dónde | Qué hace |
+|---|---|---|
+| Ingesta | `ingesta.py` → `indexar()` | Lee los `.md` y `.txt` de `data/`, los parte con `RecursiveCharacterTextSplitter` (500 tokens, 50 de solapamiento) y los guarda en ChromaDB con IDs estables (`arquitectura.md#2`). |
+| Embeddings | `vectorstore.py` → `crear_embeddings()` | `intfloat/multilingual-e5-small`, local, vía HuggingFace. Es el único lugar donde se elige el modelo: lo usan la ingesta y la consulta. |
+| Retriever | `chain.py` → `crear_retriever()` | Convierte la pregunta en un embedding y devuelve los 4 fragmentos más cercanos (distancia coseno). |
+| Generación grounded | `chain.py` → `crear_cadena()` | Cadena LCEL: retriever → contexto formateado → prompt → `ChatAnthropic` → `PydanticOutputParser` → validación de referencias. |
+| Contrato de salida | `schemas.py` → `RespuestaRAG` | `respuesta` (texto o "No lo sé."), `referencias` (archivo + fragmento) y `encontrada` (calculado). |
+| Función asíncrona | `chain.py` → `get_rag_response(query)` | Ejecuta la cadena con `.ainvoke()` y traduce cualquier falla a una excepción propia. |
+
+### Decisiones de diseño
+
+**Embeddings locales.** Anthropic no ofrece embeddings, así que el LLM y los embeddings son de proveedores distintos. Se eligió un modelo local para no depender de otra API key ni pagar por cada fragmento indexado. Lo que importa es que indexar y consultar usen el mismo modelo, no que sea del mismo proveedor que el LLM.
+
+**El modelo de embeddings queda registrado en la base.** La colección guarda en su metadata el nombre del modelo con el que se indexó. Antes de consultar, `abrir_para_consulta` lo compara con el actual y, si no coinciden, falla con `EmbeddingsNoCoincidenError` en lugar de devolver resultados al azar.
+
+**Un modelo de embeddings que acepte 512 tokens.** Muchos modelos populares (`all-MiniLM-L6-v2`, `paraphrase-multilingual-MiniLM-L12-v2`) cortan en 128 o 256 tokens: con fragmentos de 500 tokens, el final de cada fragmento quedaría afuera del embedding sin ningún aviso. `multilingual-e5-small` acepta 512.
+
+**Los tokens se cuentan con el tokenizer del modelo de embeddings.** "500 tokens" depende de quién cuente: el mismo texto da cantidades distintas con el tokenizer de OpenAI y con el de este modelo. Se mide con el del modelo de embeddings, que es el que tiene el límite.
+
+**Los 500 tokens se verifican sobre el fragmento ya unido.** El splitter decide el tamaño sumando los tokens de cada pedazo por separado, pero los tokens no se suman exactamente: el texto unido puede quedar unos tokens por encima. Después de partir, `partir_documento` cuenta cada fragmento entero y, si alguno se pasa, vuelve a partir ese documento con un tamaño objetivo menor.
+
+**Indexación atómica.** La ingesta arma la base nueva en una colección temporal y recién al final reemplaza a la anterior. Si algo falla a mitad de camino (sin conexión para bajar el modelo, Ctrl-C), la base anterior queda intacta y nunca queda una base a medio indexar que una corrida posterior tome por completa.
+
+**Rutas ancladas al repositorio.** `data/` y `vectorstore/` se resuelven desde la raíz del repo, no desde la carpeta actual. Para consultar, la base se abre en solo lectura y sin crear la carpeta: si no existe, el error lo dice, en vez de crear una base vacía en otro lugar.
+
+**Chunking por estructura.** El splitter prueba los separadores de Markdown en orden (títulos, párrafos, líneas, palabras) y solo baja de nivel si el pedazo no entra. Con los documentos de ejemplo, cada fragmento termina siendo una o varias secciones enteras. El solapamiento de 50 tokens solo aparece cuando un corte cae dentro de un párrafo: si el corte cae entre secciones, no hay nada que repetir.
+
+**`PydanticOutputParser` con el `stop_reason` revisado antes.** El parser genera las instrucciones de formato del prompt a partir de `RespuestaRAG` y después valida el JSON. Antes de parsear, `verificar_fin` descarta respuestas cortadas por el límite de tokens o negativas del modelo.
+
+**Las referencias se verifican, no se confían.** La cadena conserva los documentos recuperados hasta el final, y `validar_referencias` comprueba que cada fragmento citado esté entre ellos. Una respuesta sin referencias, o con una referencia a un fragmento que no se recuperó, se rechaza con `RespuestaInvalidaError`: es la forma típica de una alucinación.
+
+**El docstring de la clase no viaja al prompt.** Pydantic usa el docstring de cada clase como `description` del esquema, y ese esquema va dentro de las instrucciones de formato. Los docstrings están escritos para quien lee el código, así que se quitan del esquema con `json_schema_extra`. Las `description` de los campos sí están escritas para el modelo y se conservan.
+
+**"No lo sé" no es un error.** Es una respuesta válida con `encontrada=False`. En cambio, una base vacía o mal indexada sí es un error (`BaseNoIndexadaError`): sin documentos, todas las preguntas terminarían en "No lo sé." y el problema real quedaría oculto.
+
+**Nada bloquea el event loop.** Cargar el modelo y abrir la base son operaciones bloqueantes y se hacen con `asyncio.to_thread`. La búsqueda del retriever, en su versión async, LangChain la corre en un hilo aparte.
+
+**Errores propios.** Además de `ValueError` para una pregunta vacía, `get_rag_response` solo lanza subclases de `RAGError`:
+
+| Excepción | Cuándo |
+|---|---|
+| `RAGConfigError` | Falta `ANTHROPIC_API_KEY` u otra configuración es inválida. Las tres siguientes son subclases |
+| `BaseNoIndexadaError` | La base no existe o está vacía: hay que correr la ingesta |
+| `EmbeddingsNoCoincidenError` | La base se indexó con otro modelo de embeddings: hay que reindexar |
+| `RecursosNoDisponiblesError` | No se pudo cargar el modelo de embeddings (por ejemplo, la primera vez sin conexión) o abrir la base |
+| `ModeloNegativaError` | El modelo se negó a responder |
+| `RespuestaInvalidaError` | JSON mal formado, respuesta cortada, sin referencias o con referencias inventadas |
+| `RAGProveedorError` | Falló la llamada a Anthropic después de los reintentos del SDK. Guarda la `LLMError` en `.error` |

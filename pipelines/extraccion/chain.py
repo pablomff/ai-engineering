@@ -37,9 +37,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnableLambda
 from pydantic import ValidationError
 
-from llm_client import LLMError, Settings
+from llm_client import LLMError
 from llm_client.providers.langchain_anthropic import (
-    crear_chat_anthropic,
+    MOTIVO_NEGATIVA,
+    MOTIVO_TRUNCADO,
+    crear_chat_anthropic_desde_entorno,
     traducir_error_anthropic,
 )
 from pipelines.extraccion.schemas import ERROR_SIN_TECNOLOGIAS, ExtraccionTecnica
@@ -57,9 +59,6 @@ MAX_TOKENS = 1024
 """Límite de tokens de salida. Sobra para el esquema; si se alcanza, la
 respuesta quedó cortada y se trata como incompleta."""
 
-# Valores de stop_reason (el finish_reason de Anthropic) que se tratan aparte.
-_MOTIVO_TRUNCADO = "max_tokens"  # cortó por el límite de tokens
-_MOTIVO_NEGATIVA = "refusal"  # el modelo se negó a responder
 
 INSTRUCCIONES_FORMATO = """\
 Reglas para completar cada campo:
@@ -156,14 +155,10 @@ def crear_modelo() -> BaseChatModel:
             falta ``ANTHROPIC_API_KEY``).
     """
     try:
-        settings = Settings.from_env(provider="anthropic")
-        return crear_chat_anthropic(settings, max_tokens=MAX_TOKENS)
-    except ValidationError as exc:
-        # Solo los mensajes, sin los valores recibidos, para no exponer la key.
-        mensajes = "; ".join(e["msg"] for e in exc.errors(include_input=False))
-        raise ExtraccionConfigError(f"Configuración inválida: {mensajes}") from exc
+        return crear_chat_anthropic_desde_entorno(max_tokens=MAX_TOKENS)
     except ValueError as exc:
-        raise ExtraccionConfigError(f"Configuración inválida: {exc}") from exc
+        # El mensaje ya viene sin valores sensibles (ver providers/).
+        raise ExtraccionConfigError(str(exc)) from exc
 
 
 def _tipos_de_error(error: ValidationError) -> set[str]:
@@ -195,10 +190,10 @@ def validar_salida(salida: Mapping[str, object]) -> ExtraccionTecnica:
     metadata = raw.response_metadata if isinstance(raw, BaseMessage) else {}
     motivo_fin = metadata.get("stop_reason")
 
-    if motivo_fin == _MOTIVO_NEGATIVA:
+    if motivo_fin == MOTIVO_NEGATIVA:
         logger.warning("El modelo se negó a procesar el texto (stop_reason=refusal)")
         raise ModeloNegativaError("El modelo se negó a procesar el texto")
-    if motivo_fin == _MOTIVO_TRUNCADO:
+    if motivo_fin == MOTIVO_TRUNCADO:
         logger.warning("Salida inválida: respuesta cortada por límite de tokens (%s)", motivo_fin)
         raise ExtraccionInvalidaError("La respuesta del modelo quedó incompleta")
 
