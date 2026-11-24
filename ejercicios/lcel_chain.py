@@ -9,8 +9,8 @@ las compone en un único pipeline que ya trae ``ainvoke``, ``astream`` y
 
 Uso::
 
-    uv run python modulo-2-ejercicio/lcel_chain.py
-    uv run python modulo-2-ejercicio/lcel_chain.py "¿Qué es un agujero negro?"
+    uv run python ejercicios/lcel_chain.py
+    uv run python ejercicios/lcel_chain.py "¿Qué es un agujero negro?"
 
 """
 

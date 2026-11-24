@@ -1,0 +1,17 @@
+Dataset del RAG híbrido (pipelines/rag_hibrido). Tiene dos partes:
+
+1. Documentación oficial de HTTPX (https://github.com/encode/httpx), carpeta docs/,
+   descargada del commit 7cff5f79bc78649bbcd3fd9aa7a74c86e0f63016 (2026-11-16).
+   Son los archivos .md de esta carpeta y de advanced/.
+   Copyright © 2019, Encode OSS Ltd. Se distribuye bajo la licencia BSD-3-Clause,
+   incluida en LICENSE.md.
+
+2. Las especificaciones de los protocolos que implementa httpx, en PDF (carpeta rfc/),
+   descargadas de la publicación oficial de la RFC Editor:
+   - rfc/rfc9112.pdf: RFC 9112, HTTP/1.1 (https://www.rfc-editor.org/rfc/rfc9112.pdf)
+   - rfc/rfc9113.pdf: RFC 9113, HTTP/2   (https://www.rfc-editor.org/rfc/rfc9113.pdf)
+   Copyright © 2022 IETF Trust y los autores. Se distribuyen según el BCP 78 y las
+   Legal Provisions Relating to IETF Documents del IETF Trust
+   (https://trustee.ietf.org/license-info), que permiten copiar y redistribuir los RFC.
+
+LICENSE.md y este archivo no se indexan.

@@ -1,6 +1,6 @@
-"""Tests del orquestador del Módulo 1.
+"""Tests del orquestador concurrente.
 
-Ejecutar desde la raíz: ``uv run pytest modulo-1-ejercicio -v``
+Ejecutar desde la raíz: ``uv run pytest ejercicios -v``
 
 En los tests no se esperan segundos reales: ``monkeypatch`` achica las
 latencias 10 veces, manteniendo las proporciones entre modelos.
