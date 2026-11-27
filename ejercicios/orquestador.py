@@ -1,4 +1,4 @@
-"""Orquestador concurrente de modelos (ejercicio del Módulo 1).
+"""Orquestador concurrente de modelos.
 
 Simula un backend que consulta varias fuentes de IA a la vez. No llama a
 ninguna API real: cada "modelo" es una corrutina que espera con
@@ -17,11 +17,11 @@ Qué demuestra:
 
 Uso::
 
-    uv run python modulo-1-ejercicio/orquestador.py
+    uv run python ejercicios/orquestador.py
 
 Tests::
 
-    uv run pytest modulo-1-ejercicio
+    uv run pytest ejercicios
 """
 
 import asyncio

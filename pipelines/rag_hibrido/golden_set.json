@@ -1,0 +1,22 @@
+[
+  {
+    "pregunta": "¿Qué excepción lanza httpx cuando no logra conectarse al servidor dentro del tiempo límite?",
+    "documento_id_esperado": "advanced/timeouts.md"
+  },
+  {
+    "pregunta": "¿Cómo ejecuto una función cada vez que se envía un request o llega una respuesta?",
+    "documento_id_esperado": "advanced/event-hooks.md"
+  },
+  {
+    "pregunta": "¿Cómo uso MockTransport para simular respuestas en los tests?",
+    "documento_id_esperado": "advanced/transports.md"
+  },
+  {
+    "pregunta": "¿Cómo activo HTTP/2 en un cliente?",
+    "documento_id_esperado": "http2.md"
+  },
+  {
+    "pregunta": "¿Qué diferencias hay con la librería requests al migrar código?",
+    "documento_id_esperado": "compatibility.md"
+  }
+]
